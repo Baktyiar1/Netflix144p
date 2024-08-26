@@ -2,4 +2,6 @@ venv/
 db.sqlite3
 migrations/
 .idea/
-.DS_Store/
+*.pyc
+__pycache__/
+.DS_Store
