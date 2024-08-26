@@ -1,4 +1,7 @@
 from django.db import models
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class Movie(models.Model):
@@ -43,6 +46,7 @@ class Movie(models.Model):
         'Genre',
 
     )
+
     country = models.CharField(
         'Страна производства',
         max_length=150
@@ -110,7 +114,8 @@ class Series(models.Model):
 class Category(models.Model):
     title = models.CharField(
         'Категория',
-        max_length=100
+        max_length=100,
+
     )
 
     def __str__(self):
@@ -166,10 +171,12 @@ class FilmCrew(models.Model):
         verbose_name_plural = 'Съемочная группа'
 
 
+class Favorite(models.Model):
+    user = models.ForeignKey(User, related_name='favorites', on_delete=models.CASCADE)
+    movie = models.ForeignKey(Movie, related_name='favorited_by', on_delete=models.CASCADE)
 
-
-
-
+    class Meta:
+        unique_together = ('user', 'movie')
 
 
 
