@@ -1,6 +1,10 @@
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+
+from rest_framework.permissions import IsAuthenticated
+from .models import Movie, Favorite
+from .serializers import MovieIndexSerializer, MovieDetailSerializer, FavoriteSerializer
 from django_filters import rest_framework as filters
 from rest_framework.filters import OrderingFilter, SearchFilter
 
@@ -10,6 +14,7 @@ from .serializers import (
     MovieSerializerCreate
 )
 from .filters import MovieSerialFilter
+
 
 class MovieSerialIndexView(APIView):
     def get(self, request, *args, **kwargs):
@@ -35,6 +40,35 @@ class MovieSerialIndexView(APIView):
         }
         return Response(data)
 
+
+class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Movie.objects.all()
+    serializer_class = MovieDetailSerializer
+
+
+# Добавление фильма в избранное
+class AddFavoriteMovieView(generics.CreateAPIView):
+    serializer_class = FavoriteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+# Удаление фильма из избранного
+class RemoveFavoriteMovieView(generics.DestroyAPIView):
+    serializer_class = FavoriteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Favorite.objects.filter(user=self.request.user, movie_id=self.kwargs['movie_id'])
+
+    def delete(self, request, *args, **kwargs):
+        favorite = self.get_queryset().first()
+        if favorite:
+            favorite.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
 class MovieListView(generics.ListAPIView):
 
@@ -123,5 +157,3 @@ class CountryFilterView(generics.ListAPIView):
 class MovieSerialCreateView(generics.CreateAPIView):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializerCreate
-
-

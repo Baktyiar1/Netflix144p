@@ -1,10 +1,12 @@
 from django.urls import path
 from . import views
 urlpatterns = [
-    path('index/', views.MovieSerialIndexView.as_view()),
+    path('index/', views.MovieIndexView.as_view()),
+    path('index/<int:pk>/', views.MovieDetailView.as_view()),
+    path('favorites/add/', views.AddFavoriteMovieView.as_view(), name='add_favorite'),
+    path('favorites/remove/<int:movie_id>/', views.RemoveFavoriteMovieView.as_view(), name='remove_favorite'),
     path('index/create/', views.MovieSerialCreateView.as_view()),
-
-
+  
     # Фильмы по категориям, жанрам и странам
 
     path('movies/', views.MovieListView.as_view()),

@@ -1,4 +1,7 @@
 from django.db import models
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class Banner(models.Model):
     title = models.CharField(
@@ -48,7 +51,6 @@ class Movie(models.Model):
 
     )
     country = models.ManyToManyField('Country')
-
     age_rating = models.CharField(
         'Возрастной рейтинг',
         max_length=10
@@ -110,7 +112,8 @@ class Series(models.Model):
 class Category(models.Model):
     title = models.CharField(
         'Категория',
-        max_length=100
+        max_length=100,
+
     )
     image = models.ImageField(upload_to='category_img/')
 
@@ -179,3 +182,11 @@ class FilmCrew(models.Model):
     class Meta:
         verbose_name = 'Съемочная группа'
         verbose_name_plural = 'Съемочная группа'
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(User, related_name='favorites', on_delete=models.CASCADE)
+    movie = models.ForeignKey(Movie, related_name='favorited_by', on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('user', 'movie')
