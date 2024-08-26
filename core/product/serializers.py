@@ -1,12 +1,13 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Movie, Series, Category, Genre, Country, Banner, FilmCrew
+from .models import Movie, Series, Category, Genre, Country, Banner, FilmCrew, Favorite
 
 
 class BannerIndexSerializer(serializers.ModelSerializer):
     class Meta:
         model = Banner
         fields = ('__all__')
+
 
 class MovieIndexSerializer(serializers.ModelSerializer):
     class Meta:
@@ -16,6 +17,7 @@ class MovieIndexSerializer(serializers.ModelSerializer):
             'title',
             'poster'
         )
+
 
 class CategoriesDetailSerializer(serializers.ModelSerializer):
 
@@ -56,6 +58,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
         favorite, created = Favorite.objects.get_or_create(**validated_data)
         return favorite
 
+
 class CategoryIndexSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -64,17 +67,17 @@ class CategoryIndexSerializer(serializers.ModelSerializer):
             'title',
         )
 
+
 class GenreListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
         fields = ('__all__')
 
+
 class CountryListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Country
         fields = ('__all__')
-
-
 
 
 class MovieSerializerCreate(serializers.ModelSerializer):

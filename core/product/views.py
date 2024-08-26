@@ -3,20 +3,68 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from rest_framework.permissions import IsAuthenticated
-from .models import Movie, Favorite
-from .serializers import MovieIndexSerializer, MovieDetailSerializer, FavoriteSerializer
+
 from django_filters import rest_framework as filters
 from rest_framework.filters import OrderingFilter, SearchFilter
 
-from .models import Movie, Category, Banner, Genre, Country, Series
+from .models import Movie, Category, Banner, Genre, Country, Series, Favorite
 from .serializers import (
     MovieIndexSerializer, CategoryIndexSerializer, BannerIndexSerializer, GenreListSerializer, CountryListSerializer,
-    MovieSerializerCreate
+    MovieSerializerCreate, MovieDetailSerializer, FavoriteSerializer
 )
 from .filters import MovieSerialFilter
-
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 class MovieSerialIndexView(APIView):
+
+    @swagger_auto_schema(
+        operation_summary="Получение списка фильмов и сериалов",
+        operation_description="Получает список фильмов и сериалов, с возможностью поиска по названию.",
+        responses={
+            status.HTTP_200_OK: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'banners': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'image_url': openapi.Schema(type=openapi.TYPE_STRING),
+                                'description': openapi.Schema(type=openapi.TYPE_STRING),
+                                # добавьте другие поля, если необходимо
+                            }
+                        )
+                    ),
+                    'movies': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'title': openapi.Schema(type=openapi.TYPE_STRING),
+                                'description': openapi.Schema(type=openapi.TYPE_STRING),
+                                # добавьте другие поля, если необходимо
+                            }
+                        )
+                    ),
+                    'serials': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'title': openapi.Schema(type=openapi.TYPE_STRING),
+                                'description': openapi.Schema(type=openapi.TYPE_STRING),
+                                # добавьте другие поля, если необходимо
+                            }
+                        )
+                    )
+                }
+            )
+        }
+    )
     def get(self, request, *args, **kwargs):
         queryset = Movie.objects.all().order_by('-id')
 
@@ -97,10 +145,10 @@ class CountryListView(generics.ListAPIView):
 
 class CategoryFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
-    filter_backends = [filters.DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = MovieSerialFilter
     ordering_fields = ['created_date', 'title', 'rating']
-    search_fields = ['title']
+
 
 
 
@@ -110,10 +158,10 @@ class CategoryFilterView(generics.ListAPIView):
 
 class SeriesCategoryFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
-    filter_backends = [filters.DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = MovieSerialFilter
     ordering_fields = ['created_date', 'title', 'rating']
-    search_fields = ['title']
+
 
 
     def get_queryset(self):
@@ -122,10 +170,10 @@ class SeriesCategoryFilterView(generics.ListAPIView):
 
 class GenreFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
-    filter_backends = [filters.DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = MovieSerialFilter
     ordering_fields = ['created_date', 'title', 'rating']
-    search_fields = ['title']
+
 
     def get_queryset(self):
         genre_id = self.kwargs['genre_id']
@@ -139,16 +187,15 @@ class GenreFilterView(generics.ListAPIView):
 
 class CountryFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
-    filter_backends = [filters.DjangoFilterBackend,OrderingFilter, SearchFilter]
+    filter_backends = [filters.DjangoFilterBackend, OrderingFilter, ]
     filterset_class = MovieSerialFilter
     ordering_fields = ['created_date', 'title', 'rating']
-    search_fields = ['title']
 
 
     def get_queryset(self):
-        country_id = self.kwargs['country_id']
+        pk = self.kwargs['pk']
         is_film = self.request.query_params.get('is_film', None)
-        queryset = Movie.objects.filter(country__id=country_id).distinct()
+        queryset = Movie.objects.filter(country__id=pk).distinct()
         if is_film is not None:
             queryset = queryset.filter(is_film=is_film)
         return queryset

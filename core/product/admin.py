@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 
-from .models import Banner, Movie, Series, Category, Genre, Country, FilmCrew
+from .models import Banner, Movie, Series, Category, Genre, Country, FilmCrew, Favorite
 
 admin.site.register(Banner)
 admin.site.register(Movie)
