@@ -3,32 +3,36 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-
-class Movie(models.Model):
+class Banner(models.Model):
     title = models.CharField(
         'Название',
-        max_length=150
+        max_length=123
     )
-    description = models.TextField(
-        'Описание'
+    banner_image = models.ImageField(
+        'Изображение',
+        upload_to='media/banner_image/'
     )
-    release_date = models.DateField(
-        'Дата премьеры'
+    is_asset = models.BooleanField(
+        'Активность',
     )
-    production_year = models.DateField(
-        'Год производства'
-    )
-    rating = models.PositiveSmallIntegerField(
-        'Рейтинг фильма'
-    )
-    duration = models.CharField(
-        'Продолжительность',
-        max_length=30
-    )
-    poster = models.ImageField(
-        'Постер',
-        upload_to='media/poster_image/'
-    )
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        verbose_name = 'Баннер'
+        verbose_name_plural = 'Баннеры'
+
+
+
+class Movie(models.Model):
+    title = models.CharField('Название', max_length=150)
+    description = models.TextField('Описание')
+    release_date = models.DateField('Дата премьеры')
+    production_year = models.PositiveIntegerField('Год производства')
+    rating = models.PositiveSmallIntegerField('Рейтинг фильма')
+    duration = models.PositiveIntegerField('Продолжительность (в минутах)')
+    poster = models.ImageField('Постер', upload_to='poster_image/')
     movie = models.FileField(
         'Фильм',
         upload_to='media/movie_film/',
@@ -46,11 +50,7 @@ class Movie(models.Model):
         'Genre',
 
     )
-
-    country = models.CharField(
-        'Страна производства',
-        max_length=150
-    )
+    country = models.ManyToManyField('Country')
     age_rating = models.CharField(
         'Возрастной рейтинг',
         max_length=10
@@ -64,6 +64,8 @@ class Movie(models.Model):
         related_name='movies',
         blank=True
     )
+    is_film = models.BooleanField(help_text='Отметьте, если это фильм, и снимите, если это сериал.')
+
     is_active = models.BooleanField(
         'Активен',
         default=True
@@ -76,7 +78,6 @@ class Movie(models.Model):
         'Дата обновления',
         auto_now=True
     )
-
 
     def __str__(self):
         return self.title
@@ -95,13 +96,10 @@ class Series(models.Model):
         'Сериалы',
         upload_to='media/series/'
     )
+    categories = models.ManyToManyField('Category')
+    genres = models.ManyToManyField('Genre')
+    country = models.ManyToManyField('Country')
 
-    # Связь с FilmCrew
-    film_crews = models.ManyToManyField(
-        'FilmCrew',
-        related_name='series',
-        blank=True
-    )
 
     def __str__(self):
         return f"Серия {self.number}"
@@ -117,6 +115,7 @@ class Category(models.Model):
         max_length=100,
 
     )
+    image = models.ImageField(upload_to='category_img/')
 
     def __str__(self):
         return self.title
@@ -125,12 +124,12 @@ class Category(models.Model):
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
-
 class Genre(models.Model):
     title = models.CharField(
         'Жанр',
         max_length=100
     )
+    genre_img = models.ImageField(upload_to='genre_img/')
 
     def __str__(self):
         return self.title
@@ -139,29 +138,43 @@ class Genre(models.Model):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
+class Country(models.Model):
+    title = models.CharField(
+        'Страна производства',
+        max_length=150
+    )
+    country_img = models.ImageField(upload_to='country_img/')
+
+    def __str__(self):
+        return self.title
 
 class FilmCrew(models.Model):
     name = models.CharField(
         'Имя',
         max_length=150
     )
-    birth_date = models.DateField(
-        'Дата рождения'
-    )
+    birth_date = models.DateField('Дата рождения')
     birthplace = models.CharField(
         'Место рождения',
         max_length=150
     )
     image = models.ImageField(
-        upload_to='media/film_crew_img/',
-        blank=True,
-        null=True
+        upload_to='film_crew_img/',
+        blank=True, null=True
     )
     position = models.CharField(
         'Роль в фильме',
         max_length=100
     )
-    genres = models.ManyToManyField(Genre, blank=True)
+    bio = models.TextField(
+        'Биография',
+        blank=True
+    )
+    genres = models.ManyToManyField(
+        Genre,
+        blank=True,
+        null=True
+    )
 
     def __str__(self):
         return self.name
@@ -177,16 +190,3 @@ class Favorite(models.Model):
 
     class Meta:
         unique_together = ('user', 'movie')
-
-
-
-
-
-
-
-
-
-
-
-
-
