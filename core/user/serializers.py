@@ -36,3 +36,6 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             'phone_number',
             'cover'
         )
+
+
+print(1+1)
