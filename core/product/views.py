@@ -1,16 +1,18 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from django_filters import rest_framework as filters
 from rest_framework.filters import OrderingFilter, SearchFilter
+from .pagination import MovieSerialPagination
 
-from .models import Movie, Category, Banner, Genre, Country, Series, Favorite
+from .models import Movie, Category, Banner, Genre, Country, Series, Favorite, FilmCrew, Rating
 from .serializers import (
     MovieIndexSerializer, CategoryIndexSerializer, BannerIndexSerializer, GenreListSerializer, CountryListSerializer,
-    MovieSerializerCreate, MovieDetailSerializer, FavoriteSerializer
+    MovieSerializerCreate, MovieDetailSerializer, FavoriteSerializer, SerialCreateSerializer, FilmCrewCreateSerializer,
+    RatingSerializer, MovieSerialDetailUpdate, CategoryCreateSerializer
 )
 from .filters import MovieSerialFilter
 from drf_yasg.utils import swagger_auto_schema
@@ -91,8 +93,20 @@ class MovieSerialIndexView(APIView):
 
 class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Movie.objects.all()
-    serializer_class = MovieDetailSerializer
 
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return MovieDetailSerializer
+        elif self.request.method in ['PUT', 'PATCH']:
+            return MovieSerialDetailUpdate
+
+
+class FavoriteListView(generics.ListAPIView):
+    serializer_class = FavoriteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Favorite.objects.filter(user=self.request.user)
 
 # Добавление фильма в избранное
 class AddFavoriteMovieView(generics.CreateAPIView):
@@ -118,19 +132,23 @@ class RemoveFavoriteMovieView(generics.DestroyAPIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-class MovieListView(generics.ListAPIView):
 
+
+class MovieListView(generics.ListAPIView):
     serializer_class = CategoryIndexSerializer
 
     def get_queryset(self):
-        return Category.objects.filter(movie__isnull=False).distinct().exclude(series__isnull=False)
+        # Получаем все категории, связанные с фильмами
+        return Category.objects.filter(movies__isnull=False).distinct()
+
 
 class SeriesListView(generics.ListAPIView):
-
     serializer_class = CategoryIndexSerializer
 
     def get_queryset(self):
+        # Получаем все категории, связанные с сериалами
         return Category.objects.filter(series__isnull=False).distinct()
+
 
 class GenreListView(generics.ListAPIView):
     queryset = Genre.objects.all()
@@ -143,36 +161,40 @@ class CountryListView(generics.ListAPIView):
 
 
 
-class CategoryFilterView(generics.ListAPIView):
+
+class MovieCategoryFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = MovieSerialFilter
     ordering_fields = ['created_date', 'title', 'rating']
-
-
-
+    pagination_class = MovieSerialPagination
 
     def get_queryset(self):
         category_id = self.kwargs['category_id']
-        return Movie.objects.filter(categories__id=category_id).distinct()
+        return Movie.objects.filter(movie_categories__id=category_id, is_film=True).distinct()
+
+
 
 class SeriesCategoryFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = MovieSerialFilter
     ordering_fields = ['created_date', 'title', 'rating']
-
-
+    pagination_class = MovieSerialPagination
 
     def get_queryset(self):
         category_id = self.kwargs['category_id']
-        return Movie.objects.filter(categories__id=category_id).distinct()
+        return Movie.objects.filter(series_categories__id=category_id, is_film=False).distinct()
+
+
+
 
 class GenreFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = MovieSerialFilter
     ordering_fields = ['created_date', 'title', 'rating']
+    pagination_class = MovieSerialPagination
 
 
     def get_queryset(self):
@@ -190,6 +212,7 @@ class CountryFilterView(generics.ListAPIView):
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter, ]
     filterset_class = MovieSerialFilter
     ordering_fields = ['created_date', 'title', 'rating']
+    pagination_class = MovieSerialPagination
 
 
     def get_queryset(self):
@@ -204,3 +227,57 @@ class CountryFilterView(generics.ListAPIView):
 class MovieSerialCreateView(generics.CreateAPIView):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializerCreate
+
+class SerialCreateView(generics.CreateAPIView):
+    queryset = Series.objects.all()
+    serializer_class = SerialCreateSerializer
+
+
+class BannerCreateView(generics.CreateAPIView):
+    queryset = Banner.objects.all()
+    serializer_class = BannerIndexSerializer
+class FilmCrewCreateView(generics.CreateAPIView):
+    queryset = FilmCrew.objects.all()
+    serializer_class = FilmCrewCreateSerializer
+class CategoryCreateView(generics.CreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategoryCreateSerializer
+class GenreCreateView(generics.CreateAPIView):
+    queryset = Genre.objects.all()
+    serializer_class = GenreListSerializer
+class CountryCreateView(generics.CreateAPIView):
+    queryset = Country.objects.all()
+    serializer_class = CountryListSerializer
+
+
+
+
+class AddRatingView(generics.CreateAPIView):
+    serializer_class = RatingSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        movie_id = serializer.validated_data.get('movie').id  # предполагается, что 'movie' - это поле в сериализаторе
+        user = self.request.user
+
+        # Проверяем, существует ли уже рейтинг для данного фильма и пользователя
+        if Rating.objects.filter(movie_id=movie_id, user=user).exists():
+            raise ValidationError({"detail": "Вы уже поставили оценку этому фильму."})
+
+        # Если такой записи нет, создаем новую
+        serializer.save(user=user)
+
+class UpdateRatingView(generics.RetrieveUpdateAPIView):
+    serializer_class = RatingSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Rating.objects.filter(user=self.request.user)
+
+
+
+
+
+
+
+

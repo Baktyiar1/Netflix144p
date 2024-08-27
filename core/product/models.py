@@ -30,7 +30,7 @@ class Movie(models.Model):
     description = models.TextField('Описание')
     release_date = models.DateField('Дата премьеры')
     production_year = models.PositiveIntegerField('Год производства')
-    rating = models.PositiveSmallIntegerField('Рейтинг фильма')
+    rating = models.PositiveSmallIntegerField('Рейтинг фильма', choices=[(i, str(i)) for i in range(1, 11)])
     duration = models.PositiveIntegerField('Продолжительность (в минутах)')
     poster = models.ImageField('Постер', upload_to='poster_image/')
     movie = models.FileField(
@@ -43,14 +43,24 @@ class Movie(models.Model):
         'Series',
         blank=True
     )
-    categories = models.ManyToManyField(
+    movie_categories = models.ManyToManyField(
         'Category',
+        blank=True,
+        related_name='movies'
+    )
+    series_categories = models.ManyToManyField(
+        'Category',
+        blank=True,
+        related_name='series'
     )
     genres = models.ManyToManyField(
         'Genre',
-
+        blank=True
     )
-    country = models.ManyToManyField('Country')
+    country = models.ManyToManyField(
+        'Country',
+        blank=True
+    )
     age_rating = models.CharField(
         'Возрастной рейтинг',
         max_length=10
@@ -87,6 +97,7 @@ class Movie(models.Model):
         verbose_name_plural = 'Фильмы'
 
 
+
 class Series(models.Model):
     number = models.CharField(
         'Номер серии',
@@ -96,9 +107,14 @@ class Series(models.Model):
         'Сериалы',
         upload_to='media/series/'
     )
-    categories = models.ManyToManyField('Category')
-    genres = models.ManyToManyField('Genre')
-    country = models.ManyToManyField('Country')
+    categories = models.ManyToManyField(
+        'Category',
+        related_name='series_categories',
+        blank=True
+    )
+    # genres = models.ManyToManyField('Genre')
+    # country = models.ManyToManyField('Country')
+    # film_crews = models.ManyToManyField('FilmCrew', related_name='series')
 
 
     def __str__(self):
@@ -173,7 +189,7 @@ class FilmCrew(models.Model):
     genres = models.ManyToManyField(
         Genre,
         blank=True,
-        null=True
+
     )
 
     def __str__(self):
@@ -190,3 +206,30 @@ class Favorite(models.Model):
 
     class Meta:
         unique_together = ('user', 'movie')
+
+
+
+class Rating(models.Model):
+    movie = models.ForeignKey(Movie, related_name='ratings', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, related_name='ratings', on_delete=models.CASCADE)
+    score = models.PositiveSmallIntegerField('Оценка', choices=[(i, str(i)) for i in range(1, 11)])
+    created_date = models.DateTimeField(
+        'Дата создания',
+        auto_now_add=True
+    )
+    updated_date = models.DateTimeField(
+        'Дата обновления',
+        auto_now=True
+    )
+    class Meta:
+        unique_together = ('movie', 'user')
+
+    def __str__(self):
+        return f"{self.movie.title} - {self.user.username}: {self.score}"
+
+
+
+
+
+
+

@@ -6,7 +6,6 @@ class MovieSerialFilter(filters.FilterSet):
     class Meta:
         model = Movie
         fields = (
-            'categories',
             'genres',
             'country',
             'created_date',

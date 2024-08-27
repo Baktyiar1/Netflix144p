@@ -1,6 +1,7 @@
 # serializers.py
+from django.db.models import Avg
 from rest_framework import serializers
-from .models import Movie, Series, Category, Genre, Country, Banner, FilmCrew, Favorite
+from .models import Movie, Series, Category, Genre, Country, Banner, FilmCrew, Favorite, Rating
 
 
 class BannerIndexSerializer(serializers.ModelSerializer):
@@ -23,13 +24,19 @@ class CategoriesDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = '__all__'
+        fields = (
+            'id',
+            'title'
+        )
 
 
 class GenreDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
-        fields = '__all__'
+        fields = (
+            'id',
+            'title'
+        )
 
 
 class FilmCrewDetailSerializer(serializers.ModelSerializer):
@@ -37,22 +44,89 @@ class FilmCrewDetailSerializer(serializers.ModelSerializer):
         model = FilmCrew
         fields = ['name', 'position']
 
+class CountryDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = (
+            'id',
+            'title'
+        )
 
 class MovieDetailSerializer(serializers.ModelSerializer):
     genres = GenreDetailSerializer(many=True)
-    categories = CategoriesDetailSerializer(many=True)
+    movie_categories = CategoriesDetailSerializer(many=True)
+    series_categories = CategoriesDetailSerializer(many=True)
     film_crews = FilmCrewDetailSerializer(many=True)
+    country = CountryDetailSerializer(many=True)
+    average_rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Movie
-        fields = '__all__'
+        fields = (
+            'id',
+            'title',
+            'description',
+            'release_date',
+            'production_year',
+            'duration',
+            'movie',
+            'series',
+            'age_rating',
+            'budget',
+            'film_crews',
+            'movie_categories',
+            'series_categories',
+            'genres',
+            'country',
+            'created_date',
+            'average_rating'
+        )
 
+    def get_average_rating(self, obj):
+        average = obj.ratings.aggregate(average=Avg('score'))['average']
+        return average if average is not None else 0
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        if instance.is_film:
+            representation['series_categories'] = []
+
+        else:
+            representation['movie_categories'] = []
+
+        return representation
+
+
+class MovieSerialDetailUpdate(serializers.ModelSerializer):
+    class Meta:
+        model = Movie
+        fields = (
+            'title',
+            'description',
+            'release_date',
+            'production_year',
+            'duration',
+            'duration',
+            'movie',
+            'series',
+            'age_rating',
+            'budget',
+            'film_crews',
+            'movie_categories',
+            'series_categories',
+            'genres',
+            'country',
+            'created_date',
+        )
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Favorite
-        fields = ('user', 'movie')
+        fields = (
+            "id",
+            'movie',)
 
     def create(self, validated_data):
         favorite, created = Favorite.objects.get_or_create(**validated_data)
@@ -73,14 +147,13 @@ class GenreListSerializer(serializers.ModelSerializer):
         model = Genre
         fields = ('__all__')
 
-
 class CountryListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Country
         fields = ('__all__')
 
-
 class MovieSerializerCreate(serializers.ModelSerializer):
+
     class Meta:
         model = Movie
         fields = (
@@ -93,7 +166,8 @@ class MovieSerializerCreate(serializers.ModelSerializer):
             'poster',
             'movie',
             'series',
-            'categories',
+            'movie_categories',
+            'series_categories',
             'genres',
             'country',
             'age_rating',
@@ -103,27 +177,49 @@ class MovieSerializerCreate(serializers.ModelSerializer):
             'created_date',
         )
 
+class SerialCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Series
+        fields = (
+            'number',
+            'series'
+        )
+
+class FilmCrewCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FilmCrew
+        fields = '__all__'
+
+class CategoryCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
+
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rating
+        fields = (
+            'id',
+            'movie',
+            'user',
+            'score',
+            'created_date'
+        )
+        read_only_fields = ['user', 'created_date',]
+
     def create(self, validated_data):
-        # Извлечение связанных полей ManyToMany
-        series_data = validated_data.pop('series', None)
-        categories_data = validated_data.pop('categories', None)
-        genres_data = validated_data.pop('genres', None)
-        country_data = validated_data.pop('country', None)
-        film_crews_data = validated_data.pop('film_crews', None)
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
 
-        # Создание фильма
-        movie = Movie.objects.create(**validated_data)
+    def update(self, instance, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().update(instance, validated_data)
 
-        # Добавление связанных ManyToMany объектов
-        if series_data:
-            movie.series.set(series_data)
-        if categories_data:
-            movie.categories.set(categories_data)
-        if genres_data:
-            movie.genres.set(genres_data)
-        if country_data:
-            movie.country.set(country_data)
-        if film_crews_data:
-            movie.film_crews.set(film_crews_data)
 
-        return movie
+
+
+
+
+
