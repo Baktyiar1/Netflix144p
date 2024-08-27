@@ -1,32 +1,38 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
-
 class MyUserManager(BaseUserManager):
-    def create_user(self, username, email, password=None):
+    def create_user(self, phone_number, username, password=None):
+        if not phone_number:
+            raise ValueError('Пользователи должны иметь номер телефона')
+
         user = self.model(
+            phone_number=phone_number,
             username=username,
-            email=email
         )
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, username, email, password=None):
+    def create_superuser(self, phone_number, username, password=None):
+
         user = self.create_user(
-            username=username,
-            email=email
+            phone_number=phone_number,
+            username=username
         )
         user.is_admin = True
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-
 class MyUser(AbstractBaseUser):
     username = models.CharField(
         'Имя',
-        max_length=123,
+        max_length=123
+    )
+    phone_number = models.CharField(
+        'Номер телефона',
+        max_length=17,
         unique=True
     )
     email = models.EmailField(
@@ -34,6 +40,7 @@ class MyUser(AbstractBaseUser):
         blank=True,
         null=True
     )
+
     cover = models.ImageField(
         upload_to='media/user_cover/',
         blank=True,
@@ -60,8 +67,8 @@ class MyUser(AbstractBaseUser):
         default=False
     )
 
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email']
+    USERNAME_FIELD = 'phone_number'
+    REQUIRED_FIELDS = ['username']
 
     objects = MyUserManager()
 
@@ -84,14 +91,3 @@ class MyUser(AbstractBaseUser):
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
-
-
-
-
-
-
-
-
-
-
-

@@ -7,6 +7,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = MyUser
         fields = (
             'username',
+            'phone_number',
             'email',
             'password'
         )
@@ -22,11 +23,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MyUser
-        fields = ('id', 'username', 'email')
+        fields = ('id', 'username', 'email', 'cover')
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MyUser
-        fields = '__all__'
+        fields = (
+            'username',
+            'email',
+            'phone_number',
+            'cover'
+        )
