@@ -152,7 +152,7 @@ class CountryListSerializer(serializers.ModelSerializer):
         model = Country
         fields = ('__all__')
 
-class MovieSerializerCreate(serializers.ModelSerializer):
+class AddMovieCreateSerializerCreate(serializers.ModelSerializer):
 
     class Meta:
         model = Movie
@@ -165,9 +165,7 @@ class MovieSerializerCreate(serializers.ModelSerializer):
             'duration',
             'poster',
             'movie',
-            'series',
             'movie_categories',
-            'series_categories',
             'genres',
             'country',
             'age_rating',
@@ -184,15 +182,31 @@ class SerialCreateSerializer(serializers.ModelSerializer):
             'number',
             'series'
         )
+class AddSerialCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Movie
+        fields = (
+            'title',
+            'description',
+            'release_date',
+            'production_year',
+            'rating',
+            'duration',
+            'poster',
+            'series',
+            'series_categories',
+            'genres',
+            'country',
+            'age_rating',
+            'budget',
+            'film_crews',
+            'created_date',
+        )
+
 
 class FilmCrewCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = FilmCrew
-        fields = '__all__'
-
-class CategoryCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
         fields = '__all__'
 
 

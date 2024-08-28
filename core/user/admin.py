@@ -49,7 +49,6 @@ class UserAdmin(BaseUserAdmin):
             'password',
             'username',
             'phone_number',
-            'cover',
             'email',
             'status')}),
         ('Permissions', {'fields': ('is_admin', )}),

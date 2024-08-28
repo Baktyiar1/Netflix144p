@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,59 +12,68 @@ from .pagination import MovieSerialPagination
 from .models import Movie, Category, Banner, Genre, Country, Series, Favorite, FilmCrew, Rating
 from .serializers import (
     MovieIndexSerializer, CategoryIndexSerializer, BannerIndexSerializer, GenreListSerializer, CountryListSerializer,
-    MovieSerializerCreate, MovieDetailSerializer, FavoriteSerializer, SerialCreateSerializer, FilmCrewCreateSerializer,
-    RatingSerializer, MovieSerialDetailUpdate, CategoryCreateSerializer
+    AddMovieCreateSerializerCreate, MovieDetailSerializer, FavoriteSerializer, SerialCreateSerializer,
+    FilmCrewCreateSerializer,
+    RatingSerializer, MovieSerialDetailUpdate, AddSerialCreateSerializer
 )
 from .filters import MovieSerialFilter
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
+
+
 class MovieSerialIndexView(APIView):
 
     @swagger_auto_schema(
-        operation_summary="Получение списка фильмов и сериалов",
-        operation_description="Получает список фильмов и сериалов, с возможностью поиска по названию.",
+        manual_parameters=[
+            openapi.Parameter(
+                'search',
+                openapi.IN_QUERY,
+                description="Поисковый запрос по названию фильма или сериала",
+                type=openapi.TYPE_STRING
+            )
+        ],
         responses={
-            status.HTTP_200_OK: openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'banners': openapi.Schema(
-                        type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                'image_url': openapi.Schema(type=openapi.TYPE_STRING),
-                                'description': openapi.Schema(type=openapi.TYPE_STRING),
-                                # добавьте другие поля, если необходимо
-                            }
-                        )
-                    ),
-                    'movies': openapi.Schema(
-                        type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                'title': openapi.Schema(type=openapi.TYPE_STRING),
-                                'description': openapi.Schema(type=openapi.TYPE_STRING),
-                                # добавьте другие поля, если необходимо
-                            }
-                        )
-                    ),
-                    'serials': openapi.Schema(
-                        type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                'title': openapi.Schema(type=openapi.TYPE_STRING),
-                                'description': openapi.Schema(type=openapi.TYPE_STRING),
-                                # добавьте другие поля, если необходимо
-                            }
-                        )
-                    )
-                }
+            200: openapi.Response(
+                description="Список фильмов, сериалов и баннеров",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'banners': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'image': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI),
+                                    'link': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI),
+                                }
+                            )
+                        ),
+                        'movies': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'title': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'poster': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI),
+                                }
+                            )
+                        ),
+                        'serials': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'title': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'poster': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI),
+                                }
+                            )
+                        ),
+                    }
+                )
             )
         }
     )
@@ -99,6 +109,21 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
             return MovieDetailSerializer
         elif self.request.method in ['PUT', 'PATCH']:
             return MovieSerialDetailUpdate
+
+    def get(self, request, *args, **kwargs):
+        product = self.get_object()
+        categories = product.movie_categories.all() | product.series_categories.all()
+
+        recommendations = Movie.objects.filter(Q(movie_categories__in=categories) | Q(series_categories__in=categories)).exclude(id=product.id).distinct()
+        serializer = MovieDetailSerializer(product)
+        recommendations_serializer = MovieIndexSerializer(recommendations, many=True)
+
+        data = {
+            'product': serializer.data,
+            'recommendations': recommendations_serializer.data,
+        }
+
+        return Response(data)
 
 
 class FavoriteListView(generics.ListAPIView):
@@ -169,6 +194,7 @@ class MovieCategoryFilterView(generics.ListAPIView):
     ordering_fields = ['created_date', 'title', 'rating']
     pagination_class = MovieSerialPagination
 
+
     def get_queryset(self):
         category_id = self.kwargs['category_id']
         return Movie.objects.filter(movie_categories__id=category_id, is_film=True).distinct()
@@ -224,32 +250,18 @@ class CountryFilterView(generics.ListAPIView):
         return queryset
 
 
-class MovieSerialCreateView(generics.CreateAPIView):
+class AddMovieCreateView(generics.CreateAPIView):
     queryset = Movie.objects.all()
-    serializer_class = MovieSerializerCreate
+    serializer_class = AddMovieCreateSerializerCreate
 
 class SerialCreateView(generics.CreateAPIView):
     queryset = Series.objects.all()
     serializer_class = SerialCreateSerializer
 
-
-class BannerCreateView(generics.CreateAPIView):
-    queryset = Banner.objects.all()
-    serializer_class = BannerIndexSerializer
-class FilmCrewCreateView(generics.CreateAPIView):
-    queryset = FilmCrew.objects.all()
-    serializer_class = FilmCrewCreateSerializer
-class CategoryCreateView(generics.CreateAPIView):
-    queryset = Category.objects.all()
-    serializer_class = CategoryCreateSerializer
-class GenreCreateView(generics.CreateAPIView):
-    queryset = Genre.objects.all()
-    serializer_class = GenreListSerializer
-class CountryCreateView(generics.CreateAPIView):
-    queryset = Country.objects.all()
-    serializer_class = CountryListSerializer
-
-
+class AddSerialCreateView(generics.CreateAPIView):
+    queryset = Movie.objects.all()
+    serializer_class = AddSerialCreateSerializer
+    
 
 
 class AddRatingView(generics.CreateAPIView):

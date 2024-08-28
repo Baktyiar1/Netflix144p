@@ -22,14 +22,10 @@ urlpatterns = [
 
     # добавление
 
-    path('index/create/', views.MovieSerialCreateView.as_view()),
-    path('index/create_serial/', views.SerialCreateView.as_view()),
-    path('index/create_film_crew/', views.FilmCrewCreateView.as_view()),
-    path('index/create_category/', views.CategoryCreateView.as_view()),
-    path('index/create_genre/', views.GenreCreateView.as_view()),
-    path('index/create_country/', views.CountryCreateView.as_view()),
-    path('index/create_banner/', views.BannerCreateView.as_view()),
-
+    path('movie_add/', views.AddMovieCreateView.as_view()),
+    path('create_serial/', views.SerialCreateView.as_view()),
+    path('add_serial/', views.AddSerialCreateView.as_view()),
+    
     # Рейтинг
 
     path('ratings/add/', views.AddRatingView.as_view()),

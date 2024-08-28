@@ -40,12 +40,6 @@ class MyUser(AbstractBaseUser):
         blank=True,
         null=True
     )
-
-    cover = models.ImageField(
-        upload_to='media/user_cover/',
-        blank=True,
-        null=True
-    )
     created_date = models.DateTimeField(
         'Дата создания',
         auto_now_add=True

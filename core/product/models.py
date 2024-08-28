@@ -31,7 +31,7 @@ class Movie(models.Model):
     release_date = models.DateField('Дата премьеры')
     production_year = models.PositiveIntegerField('Год производства')
     rating = models.PositiveSmallIntegerField('Рейтинг фильма', choices=[(i, str(i)) for i in range(1, 11)])
-    duration = models.PositiveIntegerField('Продолжительность (в минутах)')
+    duration = models.CharField(max_length=50, verbose_name='Продолжительность (в минутах)')
     poster = models.ImageField('Постер', upload_to='poster_image/')
     movie = models.FileField(
         'Фильм',

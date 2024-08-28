@@ -23,7 +23,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MyUser
-        fields = ('id', 'username', 'email', 'cover')
+        fields = ('id', 'username', 'email')
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -34,8 +34,5 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             'username',
             'email',
             'phone_number',
-            'cover'
         )
 
-
-print(1+1)
