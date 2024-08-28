@@ -2,7 +2,7 @@ from django.db.models import Q
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.permissions import IsAuthenticated
 
 from django_filters import rest_framework as filters
@@ -45,8 +45,8 @@ class MovieSerialIndexView(APIView):
                                 type=openapi.TYPE_OBJECT,
                                 properties={
                                     'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                    'image': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI),
-                                    'link': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI),
+                                    'title': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI),
+                                    'banner_image': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI),
                                 }
                             )
                         ),
@@ -100,7 +100,6 @@ class MovieSerialIndexView(APIView):
         }
         return Response(data)
 
-
 class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Movie.objects.all()
 
@@ -110,8 +109,70 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
         elif self.request.method in ['PUT', 'PATCH']:
             return MovieSerialDetailUpdate
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="Successful response",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'product': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'title': openapi.Schema(type=openapi.TYPE_STRING),
+                                'description': openapi.Schema(type=openapi.TYPE_STRING),
+                                'release_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
+                                'production_year': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'duration': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'movie': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                                'series': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                                'age_rating': openapi.Schema(type=openapi.TYPE_STRING),
+                                'budget': openapi.Schema(type=openapi.TYPE_NUMBER),
+                                'film_crews': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
+                                    'name': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'position': openapi.Schema(type=openapi.TYPE_STRING)
+                                })),
+                                'movie_categories': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'title': openapi.Schema(type=openapi.TYPE_STRING)
+                                })),
+                                'series_categories': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'title': openapi.Schema(type=openapi.TYPE_STRING)
+                                })),
+                                'genres': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'title': openapi.Schema(type=openapi.TYPE_STRING)
+                                })),
+                                'country': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'title': openapi.Schema(type=openapi.TYPE_STRING)
+                                })),
+                                'created_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
+                                'average_rating': openapi.Schema(type=openapi.TYPE_NUMBER)
+                            }
+                        ),
+                        'recommendations': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
+                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'title': openapi.Schema(type=openapi.TYPE_STRING),
+                                'poster': openapi.Schema(type=openapi.TYPE_STRING)
+                            })
+                        )
+                    }
+                )
+            ),
+            404: 'Movie not found'
+        }
+    )
     def get(self, request, *args, **kwargs):
-        product = self.get_object()
+        try:
+            product = self.get_object()
+        except Movie.DoesNotExist:
+            raise NotFound('Movie not found')
+
         categories = product.movie_categories.all() | product.series_categories.all()
 
         recommendations = Movie.objects.filter(Q(movie_categories__in=categories) | Q(series_categories__in=categories)).exclude(id=product.id).distinct()
@@ -124,6 +185,29 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
         }
 
         return Response(data)
+# class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = Movie.objects.all()
+#
+#     def get_serializer_class(self):
+#         if self.request.method == 'GET':
+#             return MovieDetailSerializer
+#         elif self.request.method in ['PUT', 'PATCH']:
+#             return MovieSerialDetailUpdate
+#
+#     def get(self, request, *args, **kwargs):
+#         product = self.get_object()
+#         categories = product.movie_categories.all() | product.series_categories.all()
+#
+#         recommendations = Movie.objects.filter(Q(movie_categories__in=categories) | Q(series_categories__in=categories)).exclude(id=product.id).distinct()
+#         serializer = MovieDetailSerializer(product)
+#         recommendations_serializer = MovieIndexSerializer(recommendations, many=True)
+#
+#         data = {
+#             'product': serializer.data,
+#             'recommendations': recommendations_serializer.data,
+#         }
+#
+#         return Response(data)
 
 
 class FavoriteListView(generics.ListAPIView):
