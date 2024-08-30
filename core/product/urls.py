@@ -3,6 +3,11 @@ from . import views
 urlpatterns = [
     path('index/', views.MovieSerialIndexView.as_view()),
     path('index/<int:pk>/', views.MovieDetailView.as_view()),
+    path('index/series/<int:pk>/', views.SeriesDetailView.as_view(), name='series-detail'),
+    path('index/movie/<int:pk>/', views.MovieDetailViews.as_view(), name='series-detail'),
+    path('serial/<int:movie_id>/series/', views.SerialListView.as_view(), name='series-list'),
+
+
     path('favorites/add/', views.AddFavoriteMovieView.as_view(), name='add_favorite'),
     path('favorites/remove/<int:movie_id>/', views.RemoveFavoriteMovieView.as_view(), name='remove_favorite'),
     path('favorites/', views.FavoriteListView.as_view()),

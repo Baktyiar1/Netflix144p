@@ -52,13 +52,32 @@ class CountryDetailSerializer(serializers.ModelSerializer):
             'title'
         )
 
-class MovieDetailSerializer(serializers.ModelSerializer):
+class SerialDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Series
+        fields = (
+            'id',
+            'series',
+            'number',
+        )
+class SeriesListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Series
+        fields = (
+            'id',
+            'image',
+            'number'
+        )
+
+class MovieSerialDetailSerializer(serializers.ModelSerializer):
     genres = GenreDetailSerializer(many=True)
     movie_categories = CategoriesDetailSerializer(many=True)
     series_categories = CategoriesDetailSerializer(many=True)
     film_crews = FilmCrewDetailSerializer(many=True)
     country = CountryDetailSerializer(many=True)
     average_rating = serializers.SerializerMethodField()
+    watch_url = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Movie
@@ -69,8 +88,6 @@ class MovieDetailSerializer(serializers.ModelSerializer):
             'release_date',
             'production_year',
             'duration',
-            'movie',
-            'series',
             'age_rating',
             'budget',
             'film_crews',
@@ -78,8 +95,8 @@ class MovieDetailSerializer(serializers.ModelSerializer):
             'series_categories',
             'genres',
             'country',
-            'created_date',
-            'average_rating'
+            'average_rating',
+            'watch_url'
         )
 
     def get_average_rating(self, obj):
@@ -97,6 +114,19 @@ class MovieDetailSerializer(serializers.ModelSerializer):
 
         return representation
 
+    def get_watch_url(self, obj):
+        if obj.is_film:
+            return f"/movies/{obj.id}/watch/"
+        else:
+            return f"/movies/{obj.id}/series/"
+
+class MovieDetail(serializers.ModelSerializer):
+    class Meta:
+        model = Movie
+        fields = (
+            'movie',
+            'title'
+        )
 
 class MovieSerialDetailUpdate(serializers.ModelSerializer):
     class Meta:
@@ -107,9 +137,6 @@ class MovieSerialDetailUpdate(serializers.ModelSerializer):
             'release_date',
             'production_year',
             'duration',
-            'duration',
-            'movie',
-            'series',
             'age_rating',
             'budget',
             'film_crews',

@@ -14,6 +14,7 @@ class Banner(models.Model):
     )
     is_asset = models.BooleanField(
         'Активность',
+        default=True
     )
 
     def __str__(self):
@@ -25,6 +26,8 @@ class Banner(models.Model):
 
 
 
+User = get_user_model()
+
 class Movie(models.Model):
     title = models.CharField('Название', max_length=150)
     description = models.TextField('Описание')
@@ -33,61 +36,19 @@ class Movie(models.Model):
     rating = models.PositiveSmallIntegerField('Рейтинг фильма', choices=[(i, str(i)) for i in range(1, 11)])
     duration = models.CharField(max_length=50, verbose_name='Продолжительность (в минутах)')
     poster = models.ImageField('Постер', upload_to='poster_image/')
-    movie = models.FileField(
-        'Фильм',
-        upload_to='media/movie_film/',
-        blank=True,
-        null=True
-    )
-    series = models.ManyToManyField(
-        'Series',
-        blank=True
-    )
-    movie_categories = models.ManyToManyField(
-        'Category',
-        blank=True,
-        related_name='movies'
-    )
-    series_categories = models.ManyToManyField(
-        'Category',
-        blank=True,
-        related_name='series'
-    )
-    genres = models.ManyToManyField(
-        'Genre',
-        blank=True
-    )
-    country = models.ManyToManyField(
-        'Country',
-        blank=True
-    )
-    age_rating = models.CharField(
-        'Возрастной рейтинг',
-        max_length=10
-    )
-    budget = models.PositiveIntegerField(
-        'Бюджет',
-        default=0
-    )
-    film_crews = models.ManyToManyField(
-        'FilmCrew',
-        related_name='movies',
-        blank=True
-    )
+    movie = models.FileField('Фильм', upload_to='media/movie_film/', blank=True, null=True)
+    series = models.ManyToManyField('Series', blank=True, related_name='related_movies')
+    movie_categories = models.ManyToManyField('Category', blank=True, related_name='movies')
+    series_categories = models.ManyToManyField('Category', blank=True, related_name='series')
+    genres = models.ManyToManyField('Genre', blank=True)
+    country = models.ManyToManyField('Country', blank=True)
+    age_rating = models.CharField('Возрастной рейтинг', max_length=10)
+    budget = models.PositiveIntegerField('Бюджет', default=0)
+    film_crews = models.ManyToManyField('FilmCrew', related_name='movies', blank=True)
     is_film = models.BooleanField(help_text='Отметьте, если это фильм, и снимите, если это сериал.')
-
-    is_active = models.BooleanField(
-        'Активен',
-        default=True
-    )
-    created_date = models.DateTimeField(
-        'Дата создания',
-        auto_now_add=True
-    )
-    updated_date = models.DateTimeField(
-        'Дата обновления',
-        auto_now=True
-    )
+    is_active = models.BooleanField('Активен', default=True)
+    created_date = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_date = models.DateTimeField('Дата обновления', auto_now=True)
 
     def __str__(self):
         return self.title
@@ -96,26 +57,13 @@ class Movie(models.Model):
         verbose_name = 'Фильм'
         verbose_name_plural = 'Фильмы'
 
-
-
 class Series(models.Model):
-    number = models.CharField(
-        'Номер серии',
-        max_length=50
-    )
-    series = models.FileField(
-        'Сериалы',
-        upload_to='media/series/'
-    )
-    categories = models.ManyToManyField(
-        'Category',
-        related_name='series_categories',
-        blank=True
-    )
-    # genres = models.ManyToManyField('Genre')
-    # country = models.ManyToManyField('Country')
-    # film_crews = models.ManyToManyField('FilmCrew', related_name='series')
-
+    movie_serial = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='series_related')
+    number = models.CharField('Название серии', max_length=50)
+    image = models.ImageField(upload_to='image_serial/')
+    series = models.FileField('Сериалы', upload_to='media/series/')
+    categories = models.ManyToManyField('Category', related_name='series_categories', blank=True)
+    is_active = models.BooleanField('Активен', default=True)
 
     def __str__(self):
         return f"Серия {self.number}"
@@ -123,6 +71,7 @@ class Series(models.Model):
     class Meta:
         verbose_name = 'Серия'
         verbose_name_plural = 'Серии'
+
 
 
 class Category(models.Model):

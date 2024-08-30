@@ -12,14 +12,14 @@ from .pagination import MovieSerialPagination
 from .models import Movie, Category, Banner, Genre, Country, Series, Favorite, FilmCrew, Rating
 from .serializers import (
     MovieIndexSerializer, CategoryIndexSerializer, BannerIndexSerializer, GenreListSerializer, CountryListSerializer,
-    AddMovieCreateSerializerCreate, MovieDetailSerializer, FavoriteSerializer, SerialCreateSerializer,
-    FilmCrewCreateSerializer,
-    RatingSerializer, MovieSerialDetailUpdate, AddSerialCreateSerializer
+    AddMovieCreateSerializerCreate, MovieSerialDetailSerializer, FavoriteSerializer, SerialCreateSerializer,
+    RatingSerializer, MovieSerialDetailUpdate, AddSerialCreateSerializer, SerialDetailSerializer, MovieDetail,
+    SeriesListSerializer
 )
 from .filters import MovieSerialFilter
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-
+from .permissions import IsAdminOrManager
 
 
 class MovieSerialIndexView(APIView):
@@ -87,9 +87,9 @@ class MovieSerialIndexView(APIView):
         movies = queryset.filter(series__isnull=True).distinct()
         serials = queryset.filter(series__isnull=False).distinct()
 
-        banners = Banner.objects.all()
+        banners = Banner.objects.filter(is_asset=True).first()
 
-        banner_serializer = BannerIndexSerializer(banners, many=True)
+        banner_serializer = BannerIndexSerializer(banners)
         movie_serializer = MovieIndexSerializer(movies, many=True)
         serial_serializer = MovieIndexSerializer(serials, many=True)
 
@@ -100,12 +100,14 @@ class MovieSerialIndexView(APIView):
         }
         return Response(data)
 
+
 class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Movie.objects.all()
+    permission_classes = [IsAdminOrManager]
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
-            return MovieDetailSerializer
+            return MovieSerialDetailSerializer
         elif self.request.method in ['PUT', 'PATCH']:
             return MovieSerialDetailUpdate
 
@@ -124,9 +126,7 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
                                 'description': openapi.Schema(type=openapi.TYPE_STRING),
                                 'release_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
                                 'production_year': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                'duration': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                'movie': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                                'series': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                                'duration': openapi.Schema(type=openapi.TYPE_STRING),  # Updated to string to match serializer
                                 'age_rating': openapi.Schema(type=openapi.TYPE_STRING),
                                 'budget': openapi.Schema(type=openapi.TYPE_NUMBER),
                                 'film_crews': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
@@ -150,7 +150,8 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
                                     'title': openapi.Schema(type=openapi.TYPE_STRING)
                                 })),
                                 'created_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-                                'average_rating': openapi.Schema(type=openapi.TYPE_NUMBER)
+                                'average_rating': openapi.Schema(type=openapi.TYPE_NUMBER),
+                                'watch_url': openapi.Schema(type=openapi.TYPE_STRING)
                             }
                         ),
                         'recommendations': openapi.Schema(
@@ -176,7 +177,7 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
         categories = product.movie_categories.all() | product.series_categories.all()
 
         recommendations = Movie.objects.filter(Q(movie_categories__in=categories) | Q(series_categories__in=categories)).exclude(id=product.id).distinct()
-        serializer = MovieDetailSerializer(product)
+        serializer = MovieSerialDetailSerializer(product)
         recommendations_serializer = MovieIndexSerializer(recommendations, many=True)
 
         data = {
@@ -185,12 +186,13 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
         }
 
         return Response(data)
+
 # class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
 #     queryset = Movie.objects.all()
 #
 #     def get_serializer_class(self):
 #         if self.request.method == 'GET':
-#             return MovieDetailSerializer
+#             return MovieSerialDetailSerializer
 #         elif self.request.method in ['PUT', 'PATCH']:
 #             return MovieSerialDetailUpdate
 #
@@ -199,7 +201,7 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
 #         categories = product.movie_categories.all() | product.series_categories.all()
 #
 #         recommendations = Movie.objects.filter(Q(movie_categories__in=categories) | Q(series_categories__in=categories)).exclude(id=product.id).distinct()
-#         serializer = MovieDetailSerializer(product)
+#         serializer = MovieSerialDetailSerializer(product)
 #         recommendations_serializer = MovieIndexSerializer(recommendations, many=True)
 #
 #         data = {
@@ -208,6 +210,26 @@ class MovieDetailView(generics.RetrieveUpdateDestroyAPIView):
 #         }
 #
 #         return Response(data)
+
+class SeriesDetailView(generics.RetrieveAPIView):
+    queryset = Series.objects.all()
+    serializer_class = SerialDetailSerializer
+
+class MovieDetailViews(generics.RetrieveAPIView):
+    queryset = Movie.objects.all()
+    serializer_class = MovieDetail
+
+class SerialListView(generics.ListAPIView):
+    serializer_class = SeriesListSerializer
+    def get_queryset(self):
+        movie_id = self.kwargs['movie_id']
+        return Series.objects.filter(movie_serial__id=movie_id)
+
+
+
+
+
+
 
 
 class FavoriteListView(generics.ListAPIView):
@@ -303,7 +325,7 @@ class GenreFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = MovieSerialFilter
-    ordering_fields = ['created_date', 'title', 'rating']
+    ordering_fields = ['production_year', 'rating']
     pagination_class = MovieSerialPagination
 
 
@@ -321,7 +343,7 @@ class CountryFilterView(generics.ListAPIView):
     serializer_class = MovieIndexSerializer
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter, ]
     filterset_class = MovieSerialFilter
-    ordering_fields = ['created_date', 'title', 'rating']
+    ordering_fields = ['production_year', 'rating']
     pagination_class = MovieSerialPagination
 
 
@@ -337,14 +359,17 @@ class CountryFilterView(generics.ListAPIView):
 class AddMovieCreateView(generics.CreateAPIView):
     queryset = Movie.objects.all()
     serializer_class = AddMovieCreateSerializerCreate
+    permission_classes = [IsAdminOrManager]
 
 class SerialCreateView(generics.CreateAPIView):
     queryset = Series.objects.all()
     serializer_class = SerialCreateSerializer
+    permission_classes = [IsAdminOrManager]
 
 class AddSerialCreateView(generics.CreateAPIView):
     queryset = Movie.objects.all()
     serializer_class = AddSerialCreateSerializer
+    permission_classes = [IsAdminOrManager]
     
 
 
